@@ -13,7 +13,8 @@ const T = {
     create: 'neu anlegen', onList: 'auf der Liste', inStock: 'im Vorrat', add: 'hinzufügen',
     emptyList: 'Die Liste ist leer.', emptyListHint: 'Oben suchen und antippen, um etwas hinzuzufügen.',
     emptyStock: 'Noch nichts im Vorrat.', emptyStockHint: 'Füge oben Produkte hinzu, deren Bestand du im Blick haben willst.',
-    finish: 'Einkauf abschließen', finishDone: n => `${n} erledigt – Vorrat aktualisiert.`, addLow: n => `Knappe Vorräte auf die Liste (${n})`,
+    finish: 'Einkauf abschließen', shopping: 'Einkauf', startShopping: '🛒 Einkauf starten', inCart: 'Im Wagen',
+    shopProgress: (d, n) => `${d} von ${n} im Wagen`, allInCart: 'Alles im Wagen! 🎉', finishDone: n => `${n} erledigt – Vorrat aktualisiert.`, addLow: n => `Knappe Vorräte auf die Liste (${n})`,
     addedLow: n => `${n} auf die Liste gesetzt.`, autoAdded: x => `${x} ist knapp – auf die Liste gesetzt.`,
     added: x => `${x} hinzugefügt.`, already: x => `${x} steht schon auf der Liste.`,
     min: n => `mindestens ${n}`, low: 'knapp', noCategory: 'Ohne Kategorie',
@@ -42,7 +43,8 @@ const T = {
     create: 'crear', onList: 'en la lista', inStock: 'en la despensa', add: 'añadir',
     emptyList: 'La lista está vacía.', emptyListHint: 'Busca arriba y toca para añadir algo.',
     emptyStock: 'La despensa está vacía.', emptyStockHint: 'Añade arriba los productos que quieres controlar.',
-    finish: 'Terminar la compra', finishDone: n => `${n} comprados – despensa actualizada.`, addLow: n => `Añadir lo que falta a la lista (${n})`,
+    finish: 'Terminar la compra', shopping: 'Compra', startShopping: '🛒 Empezar la compra', inCart: 'En el carro',
+    shopProgress: (d, n) => `${d} de ${n} en el carro`, allInCart: '¡Todo en el carro! 🎉', finishDone: n => `${n} comprados – despensa actualizada.`, addLow: n => `Añadir lo que falta a la lista (${n})`,
     addedLow: n => `${n} añadidos a la lista.`, autoAdded: x => `Queda poco ${x} – añadido a la lista.`,
     added: x => `${x} añadido.`, already: x => `${x} ya está en la lista.`,
     min: n => `mínimo ${n}`, low: 'poco', noCategory: 'Sin categoría',
@@ -78,6 +80,7 @@ const state = {
   lang: store.get('lang') === 'es' ? 'es' : 'de',
   theme: store.get('theme') || 'system',
   tab: store.get('tab') || 'list',
+  shopping: store.get('shopping') === '1',
   household: null, user: null, categories: [], products: new Map(), members: [], invite: null, live: false
 };
 const t = (k, ...a) => { const v = T[state.lang][k] ?? T.de[k]; return typeof v === 'function' ? v(...a) : v; };
@@ -222,7 +225,8 @@ function onRemote(table, type, row) {
 
 function show(id) {
   $('#auth').hidden = id !== 'auth';
-  $('#main').hidden = id !== 'main';
+  $('#main').hidden = id !== 'main' || state.shopping;
+  $('#shop').hidden = id !== 'main' || !state.shopping;
 }
 function showAuth(mode) {
   show('auth');
@@ -303,6 +307,9 @@ const unitLabel = u => t('units')[u] || u;
 
 function render() {
   applyChrome();
+  $('#main').hidden = state.shopping;
+  $('#shop').hidden = !state.shopping;
+  if (state.shopping) return renderShop();
   renderSync();
   const all = [...state.products.values()];
   const listCount = all.filter(p => p.on_list && !p.done).length;
@@ -324,7 +331,7 @@ function viewList(all) {
   const lowBtn = lows ? `<button class="btn" data-action="add-low">${esc(t('addLow', lows))}</button>` : '';
   if (!items.length) return `<div class="empty"><div class="big">🧺</div><p><b>${esc(t('emptyList'))}</b><br>${esc(t('emptyListHint'))}</p>
     <div class="actions">${lowBtn}</div></div>`;
-  return grouped(items).map(g => groupHtml(g, p => `<div class="row${p.done ? ' done' : ''}">
+  return `<button class="btn primary start" data-action="shop-start">${esc(t('startShopping'))}</button>` + grouped(items).map(g => groupHtml(g, p => `<div class="row${p.done ? ' done' : ''}">
       <button class="tap" data-action="toggle" data-id="${p.id}"><span class="check">${p.done ? '✓' : ''}</span>
         <span class="emoji">${esc(p.emoji)}</span><span class="name">${esc(label(p))}</span></button>
       ${stepper(p.id, p.list_qty, 'list-qty')}
@@ -377,6 +384,43 @@ function viewSettings() {
         <button class="btn small danger" data-action="logout">${esc(t('logout'))}</button></div>
     </div></div>
   </div>`;
+}
+
+// ---------- Einkaufsmodus ----------
+
+function renderShop() {
+  const items = [...state.products.values()].filter(p => p.on_list).sort(byName);
+  const open = items.filter(p => !p.done), done = items.filter(p => p.done);
+  const row = p => `<div class="row${p.done ? ' done' : ''}">
+      <button class="tap" data-action="toggle" data-id="${p.id}"><span class="check">${p.done ? '✓' : ''}</span>
+        <span class="emoji">${esc(p.emoji)}</span><span class="name">${esc(label(p))}</span>
+        ${p.list_qty > 1 ? `<span class="qty">${p.list_qty}×</span>` : ''}</button></div>`;
+  $('#shop-progress').textContent = t('shopProgress', done.length, items.length);
+  $('#shop-bar').style.width = items.length ? (100 * done.length / items.length) + '%' : '0';
+  $('#shop-finish').textContent = `${t('finish')}${done.length ? ` (${done.length})` : ''}`;
+  $('#shop-finish').disabled = !done.length;
+  $('#shop-view').innerHTML = (open.length ? grouped(open).map(g => groupHtml(g, row)).join('')
+      : `<div class="empty"><div class="big">🛒</div><p><b>${esc(items.length ? t('allInCart') : t('emptyList'))}</b></p></div>`)
+    + (done.length ? `<div class="group"><h2>${esc(t('inCart'))}</h2><div class="card">${done.map(row).join('')}</div></div>` : '');
+}
+
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && 'wakeLock' in navigator && !document.hidden) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { wakeLock = null; }
+}
+
+function setShopping(on) {
+  state.shopping = on;
+  store.set('shopping', on ? '1' : null);
+  $('#search').value = ''; $('#suggestions').hidden = true;
+  keepAwake(on);
+  render();
+  $('#shop-view').scrollTop = 0; scrollTo(0, 0);
 }
 
 // ---------- Suche ----------
@@ -550,6 +594,7 @@ function finish() {
   persist('products', done.map(p => ({ ...p, on_list: false, done: false, list_qty: 1,
     stock_qty: tracked(p) ? p.stock_qty + p.list_qty : p.stock_qty })));
   toast(t('finishDone', done.length));
+  if (state.shopping && ![...state.products.values()].some(p => p.on_list)) setShopping(false);
 }
 
 function exportBackup() {
@@ -632,6 +677,8 @@ document.addEventListener('click', async e => {
     case 'stock-qty': changeStock(p, d); break;
     case 'add-low': addLow(); break;
     case 'finish': finish(); break;
+    case 'shop-start': setShopping(true); break;
+    case 'shop-close': setShopping(false); break;
     case 'edit': openProduct(p); break;
     case 'new-product': {
       const q = $('#search').value.trim();
@@ -657,7 +704,7 @@ document.addEventListener('click', async e => {
     }
     case 'export': exportBackup(); break;
     case 'import': $('#import-file').click(); break;
-    case 'logout': await db.logout(); state.household = null; state.products = new Map(); state.categories = []; break;
+    case 'logout': setShopping(false); await db.logout(); state.household = null; state.products = new Map(); state.categories = []; break;
   }
 });
 
@@ -670,6 +717,10 @@ function toast(msg) {
 
 addEventListener('online', renderSync);
 addEventListener('offline', renderSync);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && state.household) loadData().catch(() => {}); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (state.household) loadData().catch(() => {});
+  if (state.shopping) keepAwake(true);
+});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyChrome);
 applyChrome();

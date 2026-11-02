@@ -161,3 +161,24 @@ dialog::backdrop { background: rgba(0, 0, 0, .35); }
   opacity: 0; pointer-events: none; transition: .2s; max-width: calc(100% - 32px); z-index: 20;
 }
 #toast.show { opacity: 1; transform: translateX(-50%); }
+
+/* Einkaufsmodus: ganzer Bildschirm, nur die Liste */
+.shop { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; background: var(--bg); }
+.shop-bar { display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; }
+.shop-close {
+  width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--surface-2); font-size: 20px; flex: none;
+}
+.shop-title { display: grid; line-height: 1.2; }
+.shop-title b { font-size: 24px; letter-spacing: -.02em; }
+.shop-title span { font-size: 14px; color: var(--muted); }
+.shop-progressbar { height: 4px; margin: 0 16px; border-radius: 2px; background: var(--surface-2); overflow: hidden; flex: none; }
+.shop-progressbar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .25s; }
+#shop-view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 16px 16px; overscroll-behavior: contain; }
+#shop-view .row { min-height: 64px; font-size: 19px; }
+#shop-view .row .emoji { font-size: 28px; width: 36px; }
+#shop-view .check { width: 30px; height: 30px; }
+.qty { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; flex: none; }
+.row.done .qty { color: var(--muted); }
+.shop-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); }
+.shop-foot .btn { width: 100%; padding: 15px; font-size: 17px; }
+.btn.start { width: 100%; margin-top: 12px; padding: 15px; font-size: 17px; }

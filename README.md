@@ -5,6 +5,7 @@ Gemeinsame Einkaufsliste mit Vorrat für einen Haushalt, umschaltbar Deutsch/Spa
 ## Funktionen
 
 - **Liste:** oben suchen (Deutsch oder Spanisch) und antippen; unbekannte Produkte direkt neu anlegen. Abhaken, Menge ändern, „Einkauf abschließen“ räumt Erledigtes ab und bucht es in den Vorrat.
+- **Einkaufsmodus:** „Einkauf starten“ zeigt nur die Liste über den ganzen Bildschirm, mit großen Zeilen, Fortschritt und „Im Wagen“; der Bildschirm bleibt an. Das ✕ führt zurück zur Hauptseite, z. B. um noch etwas hinzuzufügen. Echtes Vollbild ohne Safari-Leisten gibt es auf dem iPhone über Teilen → „Zum Home-Bildschirm“.
 - **Vorrat:** Bestand per +/− pflegen. Fällt er auf oder unter die Mindestmenge, kommt das Produkt automatisch auf die Liste.
 - **Sortiment:** Produkte (Name de/es, Symbol, Kategorie, Einheit, Mindestmenge) und Kategorien bearbeiten.
 - **Haushalt:** Einladungscode erstellen (7 Tage, einmalig); die andere Person tritt damit bei und sieht alles live.

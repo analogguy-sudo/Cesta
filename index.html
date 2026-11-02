@@ -12,9 +12,11 @@
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cesta">
 <title>Cesta</title>
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
 <script src="config.js"></script>
 <script src="defaults.js"></script>
@@ -62,11 +64,21 @@
       <button data-tab="settings"><span class="tab-icon">⚙️</span><span data-i18n="tabSettings"></span></button>
     </nav>
   </section>
+
+  <section id="shop" class="shop" hidden>
+    <header class="shop-bar">
+      <button type="button" class="shop-close" data-action="shop-close" aria-label="×">✕</button>
+      <div class="shop-title"><b data-i18n="shopping"></b><span id="shop-progress"></span></div>
+    </header>
+    <div class="shop-progressbar"><i id="shop-bar"></i></div>
+    <main id="shop-view"></main>
+    <footer class="shop-foot"><button type="button" class="btn primary" data-action="finish" id="shop-finish"></button></footer>
+  </section>
 </div>
 
 <dialog id="sheet"><form method="dialog" id="sheet-form"></form></dialog>
 <input type="file" id="import-file" accept="application/json,.json" hidden>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
