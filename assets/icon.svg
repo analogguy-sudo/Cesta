@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ef8a6f"/><stop offset="1" stop-color="#c8553d"/></linearGradient>
+    <linearGradient id="basket" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff8f0"/><stop offset="1" stop-color="#f1dcc8"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M168 238 L218 128 M344 238 L294 128" stroke="#fff8f0" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <circle cx="200" cy="196" r="34" fill="#7cc36e"/>
+  <circle cx="262" cy="182" r="38" fill="#f4c542"/>
+  <circle cx="318" cy="200" r="30" fill="#e94f37"/>
+  <path d="M104 236 H408 a16 16 0 0 1 15.6 19.5 L388 400 a28 28 0 0 1 -27.3 22 H151.3 a28 28 0 0 1 -27.3 -22 L88.4 255.5 A16 16 0 0 1 104 236 Z" fill="url(#basket)"/>
+  <path d="M192 286 L204 380 M256 286 V380 M320 286 L308 380" stroke="#d9b597" stroke-width="18" stroke-linecap="round"/>
+</svg>
