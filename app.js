@@ -25,6 +25,9 @@ const T = {
     addProduct: '+ Produkt',
     language: 'Sprache', theme: 'Design', themeSystem: 'System', themeLight: 'Hell', themeDark: 'Dunkel',
     household: 'Haushalt', members: 'Mitglieder', invite: 'Einladungscode erstellen', inviteHint: 'Code an die andere Person schicken. Gilt 7 Tage und einmal.',
+    shareInvite: 'Einladung senden', copied: 'Einladung kopiert – jetzt z. B. in WhatsApp einfügen.',
+    shareText: (c, u) => `Komm in meinen Cesta-Haushalt, dann teilen wir die Einkaufsliste: ${u}\nCode: ${c}`,
+    joinConfirm: c => `Mit Code ${c} dem Haushalt beitreten? Dein bisheriger Haushalt wird dabei aufgelöst.`,
     join: 'Mit Code beitreten', joinPrompt: 'Einladungscode', joinWarn: 'Du verlässt dabei deinen bisherigen Haushalt.', joined: 'Haushalt beigetreten.',
     data: 'Daten', export: 'Sicherung herunterladen', import: 'Sicherung einspielen',
     importConfirm: (c, p) => `Sortiment, Liste und Vorrat durch die Sicherung ersetzen? (${c} Kategorien, ${p} Produkte)`,
@@ -55,6 +58,9 @@ const T = {
     addProduct: '+ Producto',
     language: 'Idioma', theme: 'Tema', themeSystem: 'Sistema', themeLight: 'Claro', themeDark: 'Oscuro',
     household: 'Hogar', members: 'Miembros', invite: 'Crear código de invitación', inviteHint: 'Envía el código a la otra persona. Vale 7 días y una vez.',
+    shareInvite: 'Enviar invitación', copied: 'Invitación copiada – pégala p. ej. en WhatsApp.',
+    shareText: (c, u) => `Únete a mi hogar en Cesta y compartimos la lista de la compra: ${u}\nCódigo: ${c}`,
+    joinConfirm: c => `¿Unirte al hogar con el código ${c}? Tu hogar actual se eliminará.`,
     join: 'Unirse con código', joinPrompt: 'Código de invitación', joinWarn: 'Saldrás de tu hogar actual.', joined: 'Te uniste al hogar.',
     data: 'Datos', export: 'Descargar copia', import: 'Restaurar copia',
     importConfirm: (c, p) => `¿Reemplazar productos, lista y despensa por la copia? (${c} categorías, ${p} productos)`,
@@ -249,6 +255,12 @@ db.onAuth(async (event, session) => {
     await loadData();
     db.subscribe(state.household, onRemote, ok => { state.live = ok; renderSync(); });
     db.members().then(m => { state.members = m; if (state.tab === 'settings') render(); }).catch(() => {});
+    const params = new URLSearchParams(location.search), code = params.get('join');
+    if (code) {
+      params.delete('join');
+      history.replaceState(null, '', location.pathname + (params.size ? '?' + params : '') + location.hash);
+      if (confirm(t('joinConfirm', code))) await joinHousehold(code);
+    }
   } catch (e) {
     console.error(e);
     toast(e.message || String(e));
@@ -371,7 +383,8 @@ function viewSettings() {
     </div></div>
     <div class="group"><h2>${esc(t('household'))}</h2><div class="card">
       <div class="row"><span class="name">${esc(t('members'))}<small>${esc(state.members.join(', '))}</small></span></div>
-      <div class="row">${state.invite ? `<span class="name"><span class="code">${esc(state.invite)}</span><small>${esc(t('inviteHint'))}</small></span>`
+      <div class="row">${state.invite ? `<span class="name"><span class="code">${esc(state.invite)}</span><small>${esc(t('inviteHint'))}</small></span>
+        <button class="btn small primary" data-action="share-invite">${esc(t('shareInvite'))}</button>`
         : `<button class="btn small" data-action="invite">${esc(t('invite'))}</button>`}</div>
       <div class="row"><button class="btn small" data-action="join">${esc(t('join'))}</button></div>
     </div></div>
@@ -690,16 +703,10 @@ document.addEventListener('click', async e => {
     }
     case 'categories': openCategories(); break;
     case 'invite': try { state.invite = await db.createInvite(); render(); } catch (err) { toast(err.message); } break;
+    case 'share-invite': shareInvite(); break;
     case 'join': {
       const code = prompt(`${t('joinPrompt')}\n${t('joinWarn')}`);
-      if (!code) return;
-      try {
-        state.household = await db.join(code.trim());
-        await loadData();
-        db.subscribe(state.household, onRemote, ok => { state.live = ok; renderSync(); });
-        state.members = await db.members();
-        render(); toast(t('joined'));
-      } catch (err) { toast(err.message); }
+      if (code) await joinHousehold(code);
       break;
     }
     case 'export': exportBackup(); break;
@@ -707,6 +714,28 @@ document.addEventListener('click', async e => {
     case 'logout': setShopping(false); await db.logout(); state.household = null; state.products = new Map(); state.categories = []; break;
   }
 });
+
+async function shareInvite() {
+  const url = `${location.origin}${location.pathname}?join=${encodeURIComponent(state.invite)}`;
+  const text = t('shareText', state.invite, url);
+  if (navigator.share) {
+    try { return await navigator.share({ title: 'Cesta', text }); }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); toast(t('copied')); }
+  catch (e) { prompt(t('shareInvite'), text); }
+}
+
+async function joinHousehold(code) {
+  try {
+    state.household = await db.join(code.trim());
+    state.invite = null;
+    await loadData();
+    db.subscribe(state.household, onRemote, ok => { state.live = ok; renderSync(); });
+    state.members = await db.members();
+    render(); toast(t('joined'));
+  } catch (err) { toast(err.message); }
+}
 
 let toastTimer;
 function toast(msg) {
