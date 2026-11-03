@@ -2,6 +2,7 @@
   "name": "Cesta",
   "short_name": "Cesta",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f6f3ee",
   "theme_color": "#f6f3ee",
