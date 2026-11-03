@@ -182,3 +182,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .35); }
 .shop-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); }
 .shop-foot .btn { width: 100%; padding: 15px; font-size: 17px; }
 .btn.start { width: 100%; margin-top: 12px; padding: 15px; font-size: 17px; }
+
+.emoji-picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
+.emoji-picks button { width: 40px; height: 40px; border: 0; border-radius: 10px; background: var(--surface-2); font-size: 22px; }
+.emoji-picks button.on { outline: 2px solid var(--accent); }

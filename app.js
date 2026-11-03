@@ -22,7 +22,7 @@ const T = {
     category: 'Kategorie', unit: 'Einheit', threshold: 'Mindestmenge', stock: 'Bestand', thresholdHint: '0 = kein Vorrat führen',
     save: 'Speichern', cancel: 'Abbrechen', delete: 'Löschen', confirmDelete: x => `„${x}“ wirklich löschen?`, close: 'Fertig',
     editCategories: 'Kategorien bearbeiten', newCategory: 'Neue Kategorie', confirmDeleteCategory: x => `Kategorie „${x}“ löschen? Die Produkte bleiben erhalten.`,
-    addProduct: '+ Produkt',
+    addProduct: '+ Produkt', fillIcons: n => `Fehlende Symbole ergänzen (${n})`, iconsFilled: n => `${n} Symbole ergänzt.`,
     language: 'Sprache', theme: 'Design', themeSystem: 'System', themeLight: 'Hell', themeDark: 'Dunkel',
     household: 'Haushalt', members: 'Mitglieder', invite: 'Einladungscode erstellen', inviteHint: 'Code an die andere Person schicken. Gilt 7 Tage und einmal.',
     shareInvite: 'Einladung senden', copied: 'Einladung kopiert – jetzt z. B. in WhatsApp einfügen.',
@@ -55,7 +55,7 @@ const T = {
     category: 'Categoría', unit: 'Unidad', threshold: 'Cantidad mínima', stock: 'Existencias', thresholdHint: '0 = no controlar',
     save: 'Guardar', cancel: 'Cancelar', delete: 'Eliminar', confirmDelete: x => `¿Eliminar «${x}»?`, close: 'Listo',
     editCategories: 'Editar categorías', newCategory: 'Nueva categoría', confirmDeleteCategory: x => `¿Eliminar la categoría «${x}»? Los productos se conservan.`,
-    addProduct: '+ Producto',
+    addProduct: '+ Producto', fillIcons: n => `Completar iconos (${n})`, iconsFilled: n => `${n} iconos completados.`,
     language: 'Idioma', theme: 'Tema', themeSystem: 'Sistema', themeLight: 'Claro', themeDark: 'Oscuro',
     household: 'Hogar', members: 'Miembros', invite: 'Crear código de invitación', inviteHint: 'Envía el código a la otra persona. Vale 7 días y una vez.',
     shareInvite: 'Enviar invitación', copied: 'Invitación copiada – pégala p. ej. en WhatsApp.',
@@ -194,6 +194,54 @@ function newProduct(fields) {
     id: uid(), household_id: state.household, category_id: null, de: '', es: '', emoji: '🛒',
     on_list: false, list_qty: 1, done: false, stock_qty: 0, unit: 'pack', threshold: 0, ...fields
   };
+}
+
+// ---------- Symbole ----------
+
+const ICONS = (window.CESTA_ICONS || []).map(([emoji, cat, stems]) => ({ emoji, cat, stems: stems.split(' ').map(norm) }));
+const GENERIC = '🛒';
+
+// Treffer, der am weitesten hinten endet (Grundwort), bei Gleichstand der längere.
+function guessIcon(name) {
+  const s = norm(name).split(/ (?:de|del|con|para|sin) /)[0];
+  if (!s) return null;
+  let best = null, bestEnd = -1, bestLen = 0;
+  for (const icon of ICONS) for (const st of icon.stems) {
+    let idx = -1;
+    if (st.length <= 3) { const m = new RegExp(`(^|[^a-z])${st}(?![a-z])`).exec(s); if (m) idx = m.index + m[1].length; }
+    else idx = s.lastIndexOf(st);
+    if (idx < 0) continue;
+    const end = idx + st.length;
+    if (end > bestEnd || (end === bestEnd && st.length > bestLen)) { best = icon; bestEnd = end; bestLen = st.length; }
+  }
+  return best;
+}
+const guessFor = (...names) => names.map(guessIcon).find(Boolean) || null;
+
+// Kategorie des Haushalts zu einem Index aus defaults.js, über den deutschen Namen.
+function categoryFor(index) {
+  const name = window.CESTA_DEFAULTS.categories[index]?.[0];
+  const cats = sortedCats();
+  return cats.find(c => norm(c.de) === norm(name)) || cats.find(c => norm(c.de) === 'sonstiges') || null;
+}
+const categoryIcon = catId => {
+  const c = state.categories.find(x => x.id === catId);
+  const i = c ? window.CESTA_DEFAULTS.categories.findIndex(([de]) => norm(de) === norm(c.de)) : -1;
+  return window.CESTA_CATEGORY_ICONS?.[i] || GENERIC;
+};
+
+function iconPicks(de, es, catId) {
+  const guess = guessFor(de, es);
+  const i = window.CESTA_DEFAULTS.categories.findIndex(([n]) => norm(n) === norm(state.categories.find(c => c.id === catId)?.de));
+  const fromCat = ICONS.filter(x => x.cat === i).map(x => x.emoji);
+  return [...new Set([guess?.emoji, categoryIcon(catId), ...fromCat].filter(Boolean))].slice(0, 18);
+}
+
+function fillIcons() {
+  const changed = [...state.products.values()].filter(p => p.emoji === GENERIC)
+    .map(p => ({ ...p, emoji: guessFor(p.de, p.es)?.emoji || categoryIcon(p.category_id) })).filter(p => p.emoji !== GENERIC);
+  if (changed.length) persist('products', changed);
+  toast(t('iconsFilled', changed.length));
 }
 
 // ---------- Laden ----------
@@ -366,7 +414,8 @@ function viewCatalog(all) {
   const q = norm($('#search').value);
   const items = all.filter(p => !q || norm(p.de).includes(q) || norm(p.es).includes(q)).sort(byName);
   return `<div class="actions"><button class="btn" data-action="new-product">${esc(t('addProduct'))}</button>
-      <button class="btn" data-action="categories">${esc(t('editCategories'))}</button></div>`
+      <button class="btn" data-action="categories">${esc(t('editCategories'))}</button>
+      ${all.some(p => p.emoji === GENERIC) ? `<button class="btn" data-action="fill-icons">${esc(t('fillIcons', all.filter(p => p.emoji === GENERIC).length))}</button>` : ''}</div>`
     + grouped(items).map(g => groupHtml(g, p => `<div class="row">
       <button class="tap" data-action="edit" data-id="${p.id}"><span class="emoji">${esc(p.emoji)}</span>
         <span class="name">${esc(label(p))}<small>${esc(state.lang === 'de' ? p.es : p.de)}</small></span></button>
@@ -474,8 +523,8 @@ function pick(p) {
 function pickNew() {
   const text = $('#search').value.trim();
   if (!text) return;
-  const other = sortedCats().find(c => norm(c.de) === 'sonstiges') || null;
-  const p = newProduct({ de: text, es: text, category_id: other?.id || null,
+  const guess = guessIcon(text);
+  const p = newProduct({ de: text, es: text, emoji: guess?.emoji || GENERIC, category_id: categoryFor(guess ? guess.cat : 15)?.id || null,
     on_list: state.tab === 'list', threshold: state.tab === 'stock' ? 1 : 0 });
   persist('products', p);
   $('#search').value = '';
@@ -509,6 +558,7 @@ function openProduct(p, isNew = false) {
       <label>${esc(t('emoji'))}<input name="emoji" class="emoji-input" value="${esc(p.emoji)}" maxlength="8"></label>
       <label>${esc(t('nameDe'))}<input name="de" value="${esc(p.de)}" required></label>
     </div>
+    <div class="emoji-picks" id="emoji-picks"></div>
     <label>${esc(t('nameEs'))}<input name="es" value="${esc(p.es)}"></label>
     <label>${esc(t('category'))}<select name="category_id">${opts([['', t('noCategory')], ...sortedCats().map(c => [c.id, label(c)])], p.category_id || '')}</select></label>
     <div class="two">
@@ -531,7 +581,27 @@ function openProduct(p, isNew = false) {
     if (isLow(next) && !next.on_list) Object.assign(patch, { on_list: true, done: false, list_qty: Math.max(1, next.threshold - next.stock_qty + 1) });
     product(p.id, patch);
   };
+  const f = sheetForm.elements;
+  // Symbol folgt dem Namen, bis es jemand selbst auswählt; bei neuen Produkten auch die Kategorie.
+  let emojiTouched = !isNew && p.emoji !== GENERIC, catTouched = !isNew;
+  const drawPicks = () => {
+    $('#emoji-picks').innerHTML = iconPicks(f.de.value, f.es.value, f.category_id.value || null).map(e =>
+      `<button type="button" data-emoji="${esc(e)}" class="${e === f.emoji.value.trim() ? 'on' : ''}">${esc(e)}</button>`).join('');
+  };
+  sheetForm.oninput = e => {
+    if (e.target.name === 'emoji') emojiTouched = true;
+    if (e.target.name === 'category_id') catTouched = true;
+    if (e.target.name === 'de' || e.target.name === 'es') {
+      const guess = guessFor(f.de.value, f.es.value);
+      if (!emojiTouched) f.emoji.value = guess?.emoji || GENERIC;
+      if (!catTouched && guess) f.category_id.value = categoryFor(guess.cat)?.id || '';
+    }
+    drawPicks();
+  };
+  drawPicks();
   sheetForm.onclick = e => {
+    const pickBtn = e.target.closest('[data-emoji]');
+    if (pickBtn) { f.emoji.value = pickBtn.dataset.emoji; emojiTouched = true; drawPicks(); return; }
     const a = e.target.dataset.sheet;
     if (a === 'cancel') sheet.close();
     if (a === 'delete' && confirm(t('confirmDelete', label(p)))) { sheet.close(); erase('products', p.id); }
@@ -582,7 +652,7 @@ function openCategories() {
   };
   sheet.showModal();
 }
-sheet.addEventListener('close', () => { sheetForm.onchange = null; });
+sheet.addEventListener('close', () => { sheetForm.onchange = null; sheetForm.oninput = null; });
 
 // ---------- Aktionen ----------
 
@@ -695,13 +765,15 @@ document.addEventListener('click', async e => {
     case 'edit': openProduct(p); break;
     case 'new-product': {
       const q = $('#search').value.trim();
-      const np = newProduct({ de: q, es: q });
+      const guess = guessIcon(q);
+      const np = newProduct({ de: q, es: q, emoji: guess?.emoji || GENERIC, category_id: q ? categoryFor(guess ? guess.cat : 15)?.id || null : null });
       openProduct(np, true);
       const submit = sheetForm.onsubmit;
       sheetForm.onsubmit = ev => { state.products.set(np.id, np); submit(ev); };
       break;
     }
     case 'categories': openCategories(); break;
+    case 'fill-icons': fillIcons(); break;
     case 'invite': try { state.invite = await db.createInvite(); render(); } catch (err) { toast(err.message); } break;
     case 'share-invite': shareInvite(); break;
     case 'join': {
